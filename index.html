@@ -1,0 +1,876 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RetireDeck</title>
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<link rel="icon" type="image/png" href="favicon.png">
+<link rel="icon" href="favicon.ico" sizes="any">
+<style>
+  :root{
+    --bg:#0f1720; --panel:#17212e; --panel2:#1e2b3a; --ink:#e8eef5;
+    --muted:#93a4b8; --line:#2a3a4d; --accent:#38bdf8; --accent2:#f59e0b;
+    --good:#34d399; --bad:#f87171;
+  }
+  *{box-sizing:border-box}
+  html{background:#0b1119}   /* fills Safari's overscroll/rubber-band area */
+  body{
+    margin:0; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    background:linear-gradient(180deg,#0b1119,#0f1720 40%,#0f1720 60%,#0b1119); color:var(--ink); min-height:100vh;
+  }
+  header{
+    padding:28px 20px 12px; max-width:1320px; margin:0 auto;
+    display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:14px;
+  }
+  header h1{margin:0 0 4px; font-size:26px; letter-spacing:-.3px}
+  .brand{display:flex; align-items:center; gap:13px}
+  .brand h1{margin:0}
+  .logo-mark{height:54px; width:auto; display:block}
+  .brand-mark{width:30px; height:30px; flex:0 0 auto; display:block}
+  .brand-logo{height:34px; width:auto; display:block}
+  .brand-accent{color:#2bc0d4}
+  .market{background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:9px 14px}
+  .mkt-asof{font-size:10px; color:var(--muted); text-align:right; margin-bottom:6px;
+    text-transform:uppercase; letter-spacing:.4px}
+  .mkt-items{display:flex; gap:20px}
+  .mkt-item{text-align:right}
+  .mkt-name{font-size:10.5px; color:var(--muted); white-space:nowrap}
+  .mkt-val{font-size:16px; font-weight:650; font-variant-numeric:tabular-nums}
+  .mkt-chg{font-size:11.5px; font-variant-numeric:tabular-nums}
+  header p{margin:0; color:var(--muted); font-size:14px}
+  .disclaimer{
+    max-width:1320px; margin:10px auto 48px; padding:10px 14px; font-size:12px;
+    color:var(--muted); background:var(--panel); border:1px solid var(--line);
+    border-radius:8px;
+  }
+  .tabs{max-width:1320px; margin:6px auto 0; padding:0 20px; display:flex; gap:8px; flex-wrap:wrap}
+  .tab{background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:9px 12px;
+    color:var(--muted); font-size:13.5px; font-weight:600; cursor:pointer;
+    flex:1 1 0; min-width:0; text-align:center}
+  .tab:hover{color:var(--ink); border-color:#3a4b5e}
+  .tab.active{color:#04222f; background:var(--accent); border-color:var(--accent)}
+  main{max-width:1320px; margin:14px auto 28px; padding:0 20px; display:flex; flex-direction:column; gap:18px}
+  .card:not(.wide){max-width:680px}
+  .card{
+    background:var(--panel); border:1px solid var(--line); border-radius:14px;
+    padding:18px 18px 20px; box-shadow:0 6px 24px rgba(0,0,0,.25);
+  }
+  .card.wide{grid-column:1/-1}
+  #bt_chart, #lg_chart{height:180px}
+  #ne_chart{height:170px}
+  .combo{display:flex; flex-wrap:wrap; padding:0}
+  .combo > .combo-half{flex:1 1 300px; padding:18px 20px 20px; display:flex; flex-direction:column}
+  .combo-half .result{margin-top:auto}   /* push result boxes to bottom so they align across halves */
+  .combo-half > :nth-last-child(2){margin-bottom:22px}   /* gap above the result box on both sides */
+  .combo > .combo-half + .combo-half{border-left:1px solid var(--line)}
+  @media (max-width:640px){ .combo > .combo-half + .combo-half{border-left:none; border-top:1px solid var(--line)} }
+  .mix-row{display:flex; gap:14px; align-items:center}
+  .mix-ctl{flex:1; min-width:0}
+  .pie{display:flex; flex-direction:column; align-items:center; gap:5px; flex:0 0 auto}
+  .pie canvas{width:72px; height:72px}
+  .pie-leg{font-size:10.5px; color:var(--muted); display:flex; gap:5px; align-items:center}
+  .pie-leg i{width:9px; height:9px; border-radius:2px; display:inline-block}
+  .pie-leg i.eq{background:#38bdf8} .pie-leg i.bo{background:#f59e0b}
+  /* dual-thumb range slider */
+  .dual{position:relative; height:50px}
+  .dual-tag{position:absolute; top:2px; transform:translateX(-50%); font-size:11px; color:var(--accent);
+    white-space:nowrap; pointer-events:none; font-variant-numeric:tabular-nums}
+  .dual-track,.dual-fill{position:absolute; top:35px; height:4px; transform:translateY(-50%); border-radius:2px}
+  .dual-track{left:0; right:0; background:var(--line)}
+  .dual-fill{background:var(--accent)}
+  .dual input[type=range]{position:absolute; left:0; top:27px; width:100%; height:16px; margin:0;
+    background:none; pointer-events:none; -webkit-appearance:none; appearance:none}
+  .dual input[type=range]::-webkit-slider-runnable-track{height:16px; background:none}
+  .dual input[type=range]::-moz-range-track{height:16px; background:none}
+  .dual input[type=range]::-webkit-slider-thumb{-webkit-appearance:none; appearance:none; pointer-events:auto;
+    width:16px; height:16px; border-radius:50%; background:var(--accent); border:2px solid #0b1119; cursor:pointer}
+  .dual input[type=range]::-moz-range-thumb{pointer-events:auto;
+    width:16px; height:16px; border-radius:50%; background:var(--accent); border:2px solid #0b1119; cursor:pointer}
+  .card h2{margin:0 0 2px; font-size:17px}
+  .card .sub{color:var(--muted); font-size:12.5px; margin:0 0 14px}
+  label{display:block; font-size:12.5px; color:var(--muted); margin:12px 0 5px}
+  .row{display:flex; gap:10px}
+  .row > div{flex:1}
+  input[type=number],select{
+    width:100%; padding:9px 10px; background:var(--panel2); border:1px solid var(--line);
+    color:var(--ink); border-radius:8px; font-size:14px;
+  }
+  input[type=range]{width:100%}
+  .rangeval{float:right; color:var(--accent); font-variant-numeric:tabular-nums}
+  .result{
+    margin-top:16px; padding:14px; border-radius:10px; background:var(--panel2);
+    border:1px solid var(--line);
+  }
+  .result .big{font-size:28px; font-weight:650; letter-spacing:-.5px; font-variant-numeric:tabular-nums}
+  .result .lbl{font-size:12px; color:var(--muted); text-transform:uppercase; letter-spacing:.4px}
+  .note{font-size:12.5px; color:var(--muted)}
+  .result .note{font-size:12.5px; color:var(--muted); margin-top:6px}
+  .good{color:var(--good)} .bad{color:var(--bad)} .accent{color:var(--accent)}
+  canvas{width:100%; height:140px; margin-top:12px; display:block}
+  .chart-tip{position:fixed; display:none; pointer-events:none; z-index:60;
+    background:#0b1119; border:1px solid var(--line); border-radius:8px; padding:6px 9px;
+    font-size:11.5px; color:var(--ink); box-shadow:0 6px 18px rgba(0,0,0,.5);
+    white-space:nowrap; font-variant-numeric:tabular-nums; line-height:1.5}
+  .chart-tip b{color:var(--accent)}
+  footer{max-width:1320px;margin:0 auto;padding:0 20px 40px;color:var(--muted);font-size:12px}
+
+  /* Chatbot launcher */
+  #chat-fab{
+    position:fixed; right:22px; bottom:22px; width:58px; height:58px; border-radius:50%;
+    background:linear-gradient(145deg,var(--accent),#0ea5e9); border:none; cursor:pointer;
+    box-shadow:0 8px 24px rgba(56,189,248,.4); display:flex; align-items:center; justify-content:center;
+    transition:transform .15s ease; z-index:50;
+  }
+  #chat-fab:hover{transform:scale(1.06)}
+  #chat-fab svg{width:28px; height:28px; fill:#04222f}
+  #chat-panel{
+    position:fixed; right:22px; bottom:92px; width:330px; max-width:calc(100vw - 44px);
+    height:420px; background:var(--panel); border:1px solid var(--line); border-radius:16px;
+    box-shadow:0 18px 50px rgba(0,0,0,.5); display:none; flex-direction:column; overflow:hidden; z-index:50;
+  }
+  #chat-panel.open{display:flex}
+  .chat-head{padding:14px 16px; background:var(--panel2); border-bottom:1px solid var(--line);
+    display:flex; align-items:center; gap:10px}
+  .chat-head .dot{width:9px;height:9px;border-radius:50%;background:var(--muted)}
+  .chat-head b{font-size:14px} .chat-head span{font-size:11.5px;color:var(--muted)}
+  .chat-close{margin-left:auto; background:none; border:none; color:var(--muted);
+    font-size:22px; line-height:1; cursor:pointer; padding:0 2px}
+  .chat-close:hover{color:var(--ink)}
+  .chat-body{flex:1; padding:16px; display:flex; flex-direction:column; gap:12px; overflow-y:auto}
+  .bubble{background:var(--panel2); border:1px solid var(--line); padding:10px 12px;
+    border-radius:12px; font-size:13px; color:var(--ink); max-width:85%; white-space:pre-wrap;
+    overflow-wrap:anywhere}
+  .bubble.muted{color:var(--muted)}
+  .bubble.assistant{align-self:flex-start}
+  .bubble.user{align-self:flex-end; background:#1f4a56; border-color:#2a6473}
+  .chat-foot{padding:12px; border-top:1px solid var(--line); display:flex; gap:8px}
+  .chat-foot input{flex:1; padding:9px 11px; background:var(--panel2); border:1px solid var(--line);
+    border-radius:20px; color:var(--ink); font-size:13px}
+  .chat-foot input:focus{outline:none; border-color:var(--accent)}
+  .chat-foot button{border:none; border-radius:20px; padding:0 14px; background:var(--accent);
+    color:#04222f; font-size:13px; font-weight:600; cursor:pointer}
+  .chat-foot button:disabled, .chat-foot input:disabled{opacity:.5}
+  .badge{font-size:10px; background:var(--accent2); color:#3a2600; padding:2px 7px;
+    border-radius:10px; font-weight:700; margin-left:auto}
+</style>
+</head>
+<body>
+<header>
+  <div class="brand">
+    <svg class="brand-logo" viewBox="0 0 232 40" role="img" aria-label="RetireDeck">
+      <defs>
+        <linearGradient id="rdline" x1="0" y1="40" x2="40" y2="0" gradientUnits="userSpaceOnUse">
+          <stop offset="0" stop-color="#0f5563"/>
+          <stop offset="0.55" stop-color="#1f9fb2"/>
+          <stop offset="1" stop-color="#6fd8e6"/>
+        </linearGradient>
+      </defs>
+      <path d="M2 34 L11 29 L18 31 L26 20 L33 12 L38 6 L38 38 L2 38 Z" fill="url(#rdline)" opacity="0.14"/>
+      <path d="M2 34 L11 29 L18 31 L26 20 L33 12 L38 6" fill="none" stroke="url(#rdline)"
+            stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/>
+      <circle cx="38" cy="6" r="3" fill="#7fdceb"/>
+      <text x="46" y="31" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif"
+            font-size="30" font-weight="700" letter-spacing="-0.5">
+        <tspan fill="#e8eef5">Retire</tspan><tspan fill="#2bc0d4">Deck</tspan>
+      </text>
+    </svg>
+  </div>
+  <div class="market" id="market">
+    <div class="mkt-asof" id="mkt_asof">—</div>
+    <div class="mkt-items">
+      <div class="mkt-item"><div class="mkt-name">S&amp;P 500</div>
+        <div class="mkt-val" id="mkt_spx">—</div><div class="mkt-chg" id="mkt_spx_c">—</div></div>
+      <div class="mkt-item"><div class="mkt-name">10-yr Treasury</div>
+        <div class="mkt-val" id="mkt_10">—</div><div class="mkt-chg" id="mkt_10_c">—</div></div>
+      <div class="mkt-item"><div class="mkt-name">30-yr Treasury</div>
+        <div class="mkt-val" id="mkt_30">—</div><div class="mkt-chg" id="mkt_30_c">—</div></div>
+    </div>
+  </div>
+</header>
+
+<nav class="tabs" id="tabs">
+  <button class="tab active" data-tab="grow">Save</button>
+  <button class="tab" data-tab="spend">Spend</button>
+  <button class="tab" data-tab="benefits">Benefits</button>
+  <button class="tab" data-tab="history">Backtest</button>
+</nav>
+
+<main>
+  <!-- Historic Blend Backtest -->
+  <section class="card wide" data-panel="history">
+    <h2>Historic Blend Backtest</h2>
+    <p class="sub">Actual historical total returns for an equity/bond blend over a date range you choose.
+      Equities = S&amp;P 500, Bonds = 10-year U.S. Treasury (constant maturity). Monthly total return,
+      <strong>1926–2026</strong> (Shiller long history; recent years spliced from market data).</p>
+    <div class="row">
+      <div style="flex:2; padding-right:18px">
+        <label>Interval</label>
+        <div class="dual">
+          <span class="dual-tag" id="bt_start_lbl">—</span>
+          <span class="dual-tag" id="bt_end_lbl">—</span>
+          <div class="dual-track"></div>
+          <div class="dual-fill" id="bt_fill"></div>
+          <input type="range" id="bt_start" min="0" max="100" step="1" value="0">
+          <input type="range" id="bt_end" min="0" max="100" step="1" value="1">
+        </div>
+      </div>
+      <div>
+        <label>Rebalancing</label>
+        <select id="bt_rebal">
+          <option value="annual">Annual rebalance</option>
+          <option value="none">Buy &amp; hold (drift)</option>
+        </select>
+      </div>
+    </div>
+    <div class="mix-row">
+      <div class="mix-ctl">
+        <label>Equity / Bond mix <span class="rangeval" id="bt_rv">60% / 40%</span></label>
+        <input type="range" id="bt_eq" min="0" max="100" step="5" value="60">
+      </div>
+      <div class="pie"><canvas id="bt_pie"></canvas>
+        <div class="pie-leg"><i class="eq"></i>Equity <i class="bo"></i>Bonds</div></div>
+    </div>
+    <canvas id="bt_chart" width="600" height="150"></canvas>
+    <div class="row" style="margin-top:4px">
+      <div class="result">
+        <div class="lbl">Total return</div>
+        <div class="big" id="bt_tot">—</div>
+        <div class="note" id="bt_note"></div>
+      </div>
+      <div class="result">
+        <div class="lbl">Annualized (CAGR)</div>
+        <div class="big accent" id="bt_cagr">—</div>
+        <div class="note" id="bt_sleeves"></div>
+      </div>
+      <div class="result">
+        <div class="lbl">Max monthly drawdown</div>
+        <div class="big" id="bt_mdd">—</div>
+        <div class="note">Largest month-end peak-to-trough drop</div>
+      </div>
+    </div>
+    <div class="note" id="bt_range" style="margin-top:8px"></div>
+  </section>
+
+  <!-- Portfolio Longevity — Historical Odds -->
+  <section class="card wide" data-panel="spend">
+    <h2>Portfolio Longevity — Historical Odds</h2>
+    <p class="sub">Probability of running out of money, tested across every historical start month
+      (<strong>1926 or 1957 onward</strong>) using real S&amp;P 500 / 10-yr Treasury return sequences with monthly withdrawals.</p>
+    <div class="row">
+      <div><label>Starting balance ($)</label><input type="number" id="lg_bal" value="1000000" step="10000"></div>
+      <div><label>Monthly withdrawal ($)</label><input type="number" id="lg_wd" value="4000" step="100"></div>
+      <div><label>Horizon (years)</label><input type="number" id="lg_yrs" value="30" step="1" min="5" max="50"></div>
+      <div><label>Backtest start</label>
+        <select id="lg_start">
+          <option value="1926">1926 — S&amp;P Composite (incl. Depression)</option>
+          <option value="1957">1957 — S&amp;P 500 inception</option>
+        </select></div>
+    </div>
+    <div class="row">
+      <div class="mix-row">
+        <div class="mix-ctl"><label>Equity / Bond mix <span class="rangeval" id="lg_mixv">60% / 40%</span></label>
+          <input type="range" id="lg_eq" min="0" max="100" step="5" value="60"></div>
+        <div class="pie"><canvas id="lg_pie"></canvas>
+          <div class="pie-leg"><i class="eq"></i>Eq <i class="bo"></i>Bd</div></div>
+      </div>
+      <div><label>Withdrawal COLA</label>
+        <select id="lg_cola">
+          <option value="cpi">Actual historical CPI</option>
+          <option value="fixed">Fixed rate</option>
+        </select></div>
+      <div id="lg_inf_wrap"><label>Fixed inflation rate <span class="rangeval" id="lg_infv">3.0%/yr</span></label>
+        <input type="range" id="lg_inf" min="0" max="6" step="0.5" value="3"></div>
+    </div>
+    <div class="row" style="margin-top:4px">
+      <div class="result">
+        <div class="lbl">Probability of running out</div>
+        <div class="big" id="lg_out">—</div>
+        <div class="note" id="lg_note"></div>
+      </div>
+      <div class="result">
+        <div class="lbl">Cohorts tested</div>
+        <div class="big accent" id="lg_n">—</div>
+        <div class="note" id="lg_stats"></div>
+      </div>
+    </div>
+    <canvas id="lg_chart" width="600" height="180"></canvas>
+    <div class="note" id="lg_cap" style="margin-top:8px"></div>
+  </section>
+
+  <!-- Compound Interest (Grow) -->
+  <section class="card wide" data-panel="grow">
+    <h2>Compound Interest Calculator</h2>
+    <p class="sub">Future value of current savings plus monthly contributions.</p>
+    <div class="row">
+      <div><label>Current savings ($)</label><input type="number" id="ne_bal" value="0" step="5000"></div>
+      <div><label>Monthly contribution ($)</label><input type="number" id="ne_pmt" value="500" step="100"></div>
+    </div>
+    <div class="row">
+      <div><label>Years to retirement</label><input type="number" id="ne_yrs" value="40" step="1"></div>
+      <div>
+        <label>Return / yr <span class="rangeval" id="ne_rv">7.0%</span></label>
+        <input type="range" id="ne_ret" min="0" max="12" step="0.1" value="7">
+      </div>
+    </div>
+    <canvas id="ne_chart" width="600" height="170"></canvas>
+    <div class="result">
+      <div class="lbl">Projected balance</div>
+      <div class="big accent" id="ne_out">—</div>
+      <div class="note" id="ne_note"></div>
+    </div>
+  </section>
+
+  <!-- Safe Withdrawal (Spend) -->
+  <section class="card wide" data-panel="spend">
+    <h2>Safe Withdrawal</h2>
+    <p class="sub">Sustainable income at a chosen withdrawal rate (the "4% rule" and variants).</p>
+    <label>Portfolio value at retirement ($) <span style="opacity:.7">— auto-filled from the Compound Interest tab (editable)</span></label>
+    <input type="number" id="sw_bal" value="1000000" step="10000">
+    <label>Withdrawal rate <span class="rangeval" id="sw_rv">4.0%</span></label>
+    <input type="range" id="sw_rate" min="2" max="8" step="0.1" value="4">
+    <div class="result">
+      <div class="lbl">First-year income</div>
+      <div class="big" id="sw_out">—</div>
+      <div class="note" id="sw_note"></div>
+    </div>
+  </section>
+
+  <!-- Social Security Estimator -->
+  <section class="card wide" data-panel="benefits">
+    <h2>Social Security Estimator</h2>
+    <p class="sub">Rough <strong>inflation-adjusted</strong> (today's dollars) monthly benefit at early, full,
+      and late claiming, from your earnings. Uses the SSA method with simplifying assumptions.
+      Not an official SSA figure; check <em>ssa.gov</em> for your real estimate.</p>
+    <div class="row">
+      <div><label>Current age</label><input type="number" id="ss_age" value="40" step="1" min="18" max="66"></div>
+      <div><label>Recent average annual income ($)</label><input type="number" id="ss_income" value="80000" step="1000"></div>
+      <div><label>Annual raises above inflation <span class="rangeval" id="ss_rv">1.0%</span></label>
+        <input type="range" id="ss_raise" min="0" max="4" step="0.1" value="1"></div>
+    </div>
+    <div class="row" style="margin-top:4px">
+      <div class="result"><div class="lbl">Early — age 62</div>
+        <div class="big" id="ss_early">—</div><div class="note">70% of full benefit</div></div>
+      <div class="result"><div class="lbl">Full — age 67</div>
+        <div class="big accent" id="ss_mid">—</div><div class="note">Full retirement age</div></div>
+      <div class="result"><div class="lbl">Late — age 70</div>
+        <div class="big good" id="ss_late">—</div><div class="note">124% of full benefit</div></div>
+    </div>
+    <div class="note" id="ss_note" style="margin-top:10px"></div>
+  </section>
+</main>
+
+<div class="disclaimer">
+  <strong>Educational illustration only — not personalized investment, tax, or retirement advice.</strong>
+  Figures are simple deterministic projections based on the assumptions you enter and do not predict
+  actual results. Past performance does not guarantee future returns. Consult a licensed advisor before making decisions.
+</div>
+
+
+<div id="bt_tip" class="chart-tip"></div>
+
+<!-- Chatbot launcher (non-functional placeholder) -->
+<button id="chat-fab" title="Ask the planning assistant" aria-label="Open chat">
+  <svg viewBox="0 0 24 24"><path d="M12 2C6.5 2 2 5.9 2 10.7c0 2.6 1.3 4.9 3.4 6.5-.1 1-.6 2.4-1.7 3.6 0 0 2.6-.3 4.6-1.8 1.1.4 2.4.6 3.7.6 5.5 0 10-3.9 10-8.7S17.5 2 12 2z"/></svg>
+</button>
+<div id="chat-panel">
+  <div class="chat-head">
+    <span class="dot" style="background:var(--good)"></span>
+    <div><b>RetireDeck Assistant</b><br><span>Ask how to use the tools</span></div>
+    <button class="chat-close" id="chat-close" aria-label="Close chat">&times;</button>
+  </div>
+  <div class="chat-body" id="chat-body">
+    <div class="bubble assistant">👋 Hi! I can explain how to use the calculators on this page — the Historic Blend Backtest, Portfolio Longevity odds, Compound Interest, and Safe Withdrawal. What would you like to know?</div>
+  </div>
+  <div class="chat-foot">
+    <input type="text" id="chat-input" placeholder="Ask how to use a tool…">
+    <button id="chat-send">Send</button>
+  </div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const money = n => n.toLocaleString('en-US',{style:'currency',currency:'USD',maximumFractionDigits:0});
+let nePlot=null;
+
+// small equity/bond donut
+function drawPie(id, eqW){
+  const c=$(id); if(!c) return;
+  const S=72, dpr=window.devicePixelRatio||1;
+  c.width=S*dpr; c.height=S*dpr; const g=c.getContext('2d'); g.scale(dpr,dpr); g.clearRect(0,0,S,S);
+  const cx=S/2, cy=S/2, r=S/2-1, ir=r*0.56;
+  let a=-Math.PI/2;
+  [[eqW,'#38bdf8'],[1-eqW,'#f59e0b']].forEach(([f,col])=>{
+    if(f<=0) return;
+    const a2=a+f*2*Math.PI;
+    g.beginPath(); g.moveTo(cx,cy); g.arc(cx,cy,r,a,a2); g.closePath(); g.fillStyle=col; g.fill(); a=a2;
+  });
+  g.beginPath(); g.arc(cx,cy,ir,0,2*Math.PI); g.fillStyle='#17212e'; g.fill();  // donut hole = card bg
+  g.fillStyle='#e8eef5'; g.font='600 15px -apple-system,Segoe UI,Roboto,sans-serif';
+  g.textAlign='center'; g.textBaseline='middle'; g.fillText(Math.round(eqW*100)+'%', cx, cy);
+}
+
+/* ---- 1. Portfolio Longevity — Historical Odds ---- */
+function longevityHist(){
+  if(!PX) return;
+  const bal0=+$('lg_bal').value, wd0=+$('lg_wd').value, eqW=+$('lg_eq').value/100, boW=1-eqW;
+  const H=Math.round((+$('lg_yrs').value)*12), infl=+$('lg_inf').value/100, cola=$('lg_cola').value;
+  $('lg_mixv').textContent=Math.round(eqW*100)+'% / '+Math.round(boW*100)+'%';
+  drawPie('lg_pie', eqW);
+  $('lg_infv').textContent = (infl*100).toFixed(1)+'%/yr';
+  $('lg_inf_wrap').style.visibility = cola==='cpi' ? 'hidden' : 'visible';   // hide slider but keep column width
+  const eq=PX.eq, bo=PX.bond, cpi=PX.cpi, N=PX.dates.length, yearsN=H/12;
+  const startYr=$('lg_start').value;
+  let baseIdx=PX.dates.indexOf(startYr+'-01'); if(baseIdx<0) baseIdx=0;
+  const nCohorts=(N-H)-baseIdx;  // start indices baseIdx .. N-1-H
+  const out=$('lg_out'), note=$('lg_note');
+  if(nCohorts<12){
+    out.textContent='—'; out.className='big';
+    note.textContent='Not enough history for a '+yearsN+'-yr horizon (only '+Math.max(nCohorts,0)+
+      ' cohorts fit in the 1986–2026 data). Shorten the horizon.';
+    $('lg_n').textContent=Math.max(nCohorts,0); $('lg_stats').textContent=''; $('lg_cap').textContent='';
+    drawSpaghetti([], yearsN, bal0); return;
+  }
+  let fails=0, worstDep=Infinity; const endBals=[], paths=[];
+  for(let s=baseIdx; s<N-H; s++){
+    let hEq=eqW*bal0, hBo=boW*bal0, wd=wd0, failed=false, depMonth=0;
+    const yp=[bal0];
+    for(let m=1;m<=H;m++){
+      const i=s+m;
+      hEq*= eq[i]/eq[i-1]; hBo*= bo[i]/bo[i-1];
+      const tot=hEq+hBo;
+      if(tot<=wd){ failed=true; depMonth=m; if(m%12===0) yp.push(0); break; }
+      hEq-=wd*hEq/tot; hBo-=wd*hBo/tot;                 // withdraw, weights unchanged
+      if(m%12===0){ const t=hEq+hBo; hEq=eqW*t; hBo=boW*t;   // annual rebalance
+        wd*= (cola==='cpi' && cpi) ? cpi[i]/cpi[i-12] : (1+infl); yp.push(t); }  // COLA: realized inflation or fixed
+    }
+    while(yp.length<yearsN+1) yp.push(0);
+    if(failed){ fails++; worstDep=Math.min(worstDep, depMonth/12); endBals.push(0); }
+    else endBals.push(hEq+hBo);
+    paths.push({yp, failed});
+  }
+  const prob=fails/nCohorts;
+  const sorted=[...endBals].sort((a,b)=>a-b), med=sorted[Math.floor(sorted.length/2)];
+  out.textContent=(prob*100).toFixed(0)+'%';
+  out.className='big '+(prob<=0.05?'good':(prob<=0.15?'accent':'bad'));
+  note.textContent=fails+' of '+nCohorts+' start-months ran out before '+yearsN+' yrs'+
+    (fails? '. Worst case depleted after '+worstDep.toFixed(1)+' yrs.' : ' — every historical cohort survived.');
+  $('lg_n').textContent=nCohorts;
+  $('lg_stats').textContent='Starts '+PX.dates[baseIdx]+' → '+PX.dates[N-H-1]+
+    '. Success rate '+((1-prob)*100).toFixed(0)+'%. Median ending balance '+cmoney(med)+'.';
+  $('lg_cap').textContent='Method: overlapping historical cohorts (not independent), so read this as the '+
+    'historical frequency of depletion, not a forward guarantee. Backtest from '+startYr+' (data through 2026; Shiller + recent market data); '+
+    'bonds = constant-maturity 10-yr U.S. Treasury total return. '+nCohorts+' overlapping '+yearsN+
+    '-yr windows — a longer horizon shrinks the sample. Withdrawals grow at '+
+    (cola==='cpi'?'realized historical CPI.':'the fixed rate set.');
+  drawSpaghetti(paths, yearsN, bal0);
+}
+function cmoney(v){ return v>=1e6 ? '$'+(v/1e6).toFixed(2)+'M' : (v>=1e3 ? '$'+Math.round(v/1e3)+'k' : '$'+Math.round(v)); }
+function drawSpaghetti(paths, years, bal0){
+  const c=$('lg_chart'), dpr=window.devicePixelRatio||1, w=c.clientWidth, h=180;
+  c.width=w*dpr; c.height=h*dpr; const g=c.getContext('2d'); g.scale(dpr,dpr); g.clearRect(0,0,w,h);
+  const padL=54, padR=10, padT=10, padB=22, x0=padL, x1=w-padR, y0=padT, y1=h-padB;
+  const pts=years+1; let maxV=bal0;
+  paths.forEach(p=>p.yp.forEach(v=>{ if(v>maxV)maxV=v; }));
+  const hi=maxV*1.05, lo=0;
+  const X=i=>x0+i/((pts-1)||1)*(x1-x0), Y=v=>y1-((v-lo)/((hi-lo)||1))*(y1-y0);
+  g.font='10px -apple-system,Segoe UI,Roboto,sans-serif'; g.textBaseline='middle';
+  g.strokeStyle='#22303f'; g.fillStyle='#93a4b8'; g.lineWidth=1;
+  for(let t=0;t<=4;t++){ const v=hi*t/4, yy=Y(v);
+    g.beginPath(); g.moveTo(x0,yy); g.lineTo(x1,yy); g.stroke();
+    g.textAlign='right'; g.fillText(cmoney(v), x0-6, yy); }
+  // starting balance reference (dashed)
+  g.strokeStyle='#3a4b5e'; g.setLineDash([3,3]); g.beginPath();
+  g.moveTo(x0,Y(bal0)); g.lineTo(x1,Y(bal0)); g.stroke(); g.setLineDash([]);
+  g.strokeStyle='#3a4b5e'; g.beginPath(); g.moveTo(x0,y0); g.lineTo(x0,y1); g.lineTo(x1,y1); g.stroke();
+  g.fillStyle='#93a4b8'; g.textBaseline='top';
+  [[0,'left'],[0.5,'center'],[1,'right']].forEach(([t,al])=>{
+    const xx=X((pts-1)*t); g.textAlign=al;
+    g.fillText(Math.round(years*t)+'y', al==='left'?x0:(al==='right'?x1:xx), y1+6); });
+  // spaghetti: survivors (faint blue) first, then failures (red) on top
+  const line=(p,col)=>{ g.beginPath(); p.yp.forEach((v,i)=>{ const xx=X(i),yy=Y(v); i?g.lineTo(xx,yy):g.moveTo(xx,yy); });
+    g.strokeStyle=col; g.lineWidth=1; g.stroke(); };
+  const sa = paths.length>600 ? '.05' : (paths.length>250 ? '.09' : '.16');  // thinner as cohorts pile up
+  const fa = paths.length>600 ? '.22' : (paths.length>250 ? '.30' : '.42');
+  paths.forEach(p=>{ if(!p.failed) line(p,'rgba(56,189,248,'+sa+')'); });
+  paths.forEach(p=>{ if(p.failed) line(p,'rgba(248,113,113,'+fa+')'); });
+}
+
+/* ---- 2. Nest Egg Growth ---- */
+function nestegg(){
+  const bal=+$('ne_bal').value, pmt=+$('ne_pmt').value, yrs=+$('ne_yrs').value, r=+$('ne_ret').value/100;
+  $('ne_rv').textContent=(r*100).toFixed(1)+'%';
+  const m=r/12, N=yrs*12;
+  const fvBal = bal*Math.pow(1+m,N);
+  const fvPmt = m===0 ? pmt*N : pmt*((Math.pow(1+m,N)-1)/m);
+  const total = fvBal+fvPmt;
+  const contrib = bal + pmt*N;
+  $('ne_out').textContent = money(total);
+  $('ne_note').textContent = 'You contribute '+money(contrib)+'; growth adds '+money(total-contrib)+
+    '. At a standard 4% withdrawal rate, that supports about '+money(total*0.04/12)+'/mo.';
+  $('sw_bal').value = Math.round(total);   // feed projected balance into Safe Withdrawal →
+  safewd();
+  // month-by-month path for the growth curve
+  const totalPath=[bal], contribPath=[bal]; let b=bal, cum=bal;
+  for(let month=1; month<=N; month++){ b=b*(1+m)+pmt; cum+=pmt; totalPath.push(b); contribPath.push(cum); }
+  drawNestEgg(totalPath, contribPath, yrs);
+}
+function drawNestEgg(total, contrib, years, hoverIdx){
+  const c=$('ne_chart'); if(!c) return;
+  const dpr=window.devicePixelRatio||1, w=c.clientWidth, h=170;
+  c.width=w*dpr; c.height=h*dpr; const g=c.getContext('2d'); g.scale(dpr,dpr); g.clearRect(0,0,w,h);
+  const padL=56, padR=64, padT=10, padB=22, x0=padL, x1=w-padR, y0=padT, y1=h-padB;
+  const n=total.length, hi=(total[n-1]||1)*1.05, lo=0;
+  const X=i=>x0+i/((n-1)||1)*(x1-x0), Y=v=>y1-((v-lo)/((hi-lo)||1))*(y1-y0);
+  g.font='10px -apple-system,Segoe UI,Roboto,sans-serif'; g.textBaseline='middle';
+  g.strokeStyle='#22303f'; g.fillStyle='#93a4b8'; g.lineWidth=1;
+  for(let t=0;t<=4;t++){ const v=hi*t/4, yy=Y(v);
+    g.beginPath(); g.moveTo(x0,yy); g.lineTo(x1,yy); g.stroke(); g.textAlign='right'; g.fillText(cmoney(v), x0-6, yy); }
+  g.strokeStyle='#3a4b5e'; g.beginPath(); g.moveTo(x0,y0); g.lineTo(x0,y1); g.lineTo(x1,y1); g.stroke();
+  g.fillStyle='#93a4b8'; g.textBaseline='top';
+  [[0,'left'],[0.5,'center'],[1,'right']].forEach(([t,al])=>{ const xx=X((n-1)*t); g.textAlign=al;
+    g.fillText(Math.round(years*t)+'y', al==='left'?x0:(al==='right'?x1:xx), y1+6); });
+  // total balance curve + area
+  g.beginPath(); total.forEach((v,i)=>{ const xx=X(i),yy=Y(v); i?g.lineTo(xx,yy):g.moveTo(xx,yy); });
+  g.strokeStyle='#38bdf8'; g.lineWidth=2.5; g.stroke();
+  g.lineTo(X(n-1),y1); g.lineTo(x0,y1); g.closePath(); g.fillStyle='rgba(56,189,248,.12)'; g.fill();
+  // end dot + projected balance label to its right
+  g.beginPath(); g.arc(X(n-1),Y(total[n-1]),4.5,0,2*Math.PI); g.fillStyle='#7fdceb'; g.fill();
+  g.lineWidth=2; g.strokeStyle='#0b1119'; g.stroke();
+  g.fillStyle='#7fdceb'; g.font='600 11px -apple-system,Segoe UI,Roboto,sans-serif';
+  g.textAlign='left'; g.textBaseline='middle';
+  g.fillText(cmoney(total[n-1]), X(n-1)+8, Y(total[n-1]));
+  // store mapping for hover + draw hover marker
+  nePlot={total, x0, x1, n, years};
+  if(hoverIdx!=null && hoverIdx>=0 && hoverIdx<n){
+    const hx=X(hoverIdx), hy=Y(total[hoverIdx]);
+    g.strokeStyle='rgba(147,164,184,.45)'; g.setLineDash([2,3]);
+    g.beginPath(); g.moveTo(hx,y0); g.lineTo(hx,y1); g.stroke(); g.setLineDash([]);
+    g.beginPath(); g.arc(hx,hy,4,0,2*Math.PI); g.fillStyle='#38bdf8'; g.fill();
+    g.lineWidth=2; g.strokeStyle='#0b1119'; g.stroke();
+  }
+}
+
+/* ---- 3. Safe Withdrawal ---- */
+function safewd(){
+  const bal=+$('sw_bal').value, rate=+$('sw_rate').value/100;
+  $('sw_rv').textContent=(rate*100).toFixed(1)+'%';
+  const annual=bal*rate;
+  $('sw_out').textContent=money(annual)+' / yr';
+  const cls = rate<=0.04?'good':(rate<=0.05?'accent':'bad');
+  $('sw_out').className='big '+cls;
+  let msg = money(annual/12)+' / month. ';
+  if(rate<=0.04) msg+='At or below 4% — historically survived even worst-case 30-year cohorts.';
+  else if(rate<=0.05) msg+='4–5% — survives most historical periods but fails the worst sequences (e.g. retiring into 1966/2000).';
+  else msg+='Above 5% — elevated depletion risk in poor-return decades; use a flexible/percentage-of-balance rule instead.';
+  $('sw_note').textContent=msg;
+}
+
+/* ---- 4. Social Security Estimator ---- */
+function socialsec(){
+  const age=+$('ss_age').value, income=+$('ss_income').value, raise=+$('ss_raise').value/100;
+  $('ss_rv').textContent=(raise*100).toFixed(1)+'%';
+  const START=22, FRA=67, CAP=176100, B1=1226, B2=7391;   // 2025 wage cap + PIA bend points (today's $)
+  // model earnings age 22→66 in today's dollars, anchored at current income, capped at the SS max
+  let earn=[];
+  for(let a=START; a<FRA; a++) earn.push(Math.min(Math.max(income*Math.pow(1+raise, a-age),0), CAP));
+  earn.sort((x,y)=>y-x);
+  const aime=earn.slice(0,35).reduce((s,v)=>s+v,0)/(35*12);   // AIME = top-35 total / 420 months
+  const pia=0.9*Math.min(aime,B1) + 0.32*Math.max(0,Math.min(aime,B2)-B1) + 0.15*Math.max(0,aime-B2);
+  const mo=v=>money(Math.round(v))+' /mo';
+  $('ss_early').textContent=mo(pia*0.70);   // age 62: −30%
+  $('ss_mid').textContent  =mo(pia*1.00);   // FRA 67
+  $('ss_late').textContent =mo(pia*1.24);   // age 70: +24% delayed credits
+  $('ss_note').textContent='Estimated AIME '+money(Math.round(aime))+'/mo (average of your top 35 earning years, '+
+    "today's dollars). Assumes work from age 22, earnings capped at the SS maximum ("+money(CAP)+'), 2025 bend points, '+
+    'and full retirement age 67 (born 1960 or later). Your actual benefit depends on your full earnings record — '+
+    'get an official estimate at ssa.gov.';
+}
+
+/* ---- 0. Historic Blend Backtest ---- */
+let PX=null, btPlot=null;
+function idxForMonth(ym){
+  // nearest available month index (data is 'YYYY-MM' month-ends)
+  const D=PX.dates; let lo=0,hi=D.length-1;
+  if(ym<=D[0]) return 0; if(ym>=D[hi]) return hi;
+  for(let i=0;i<D.length;i++){ if(D[i]>=ym) return i; }
+  return hi;
+}
+function blend(){
+  if(!PX) return;
+  const eqW=+$('bt_eq').value/100, boW=1-eqW;
+  $('bt_rv').textContent=Math.round(eqW*100)+'% / '+Math.round(boW*100)+'%';
+  drawPie('bt_pie', eqW);
+  const rebal=$('bt_rebal').value;
+  let i0=+$('bt_start').value, i1=+$('bt_end').value;   // slider values are month indices
+  $('bt_start_lbl').textContent=PX.dates[i0]; $('bt_end_lbl').textContent=PX.dates[i1];
+  const _last=PX.dates.length-1;                        // highlight the selected interval on the track
+  $('bt_fill').style.left=(i0/_last*100)+'%'; $('bt_fill').style.width=((i1-i0)/_last*100)+'%';
+  // position the two date tags over their thumbs, nudging apart if they would overlap
+  (function(){
+    const t0=$('bt_start_lbl'), t1=$('bt_end_lbl'), W=t0.parentElement.clientWidth||1;
+    const x0=8+(i0/_last)*(W-16), x1=8+(i1/_last)*(W-16);       // thumb-center pixel positions
+    t0.style.transform='translateX(-50%)'; t1.style.transform='translateX(-50%)';
+    t0.style.left=x0+'px'; t1.style.left=x1+'px';
+    if(x1-x0 < (t0.offsetWidth+t1.offsetWidth)/2 + 4){          // too close → split around the midpoint
+      const mid=(x0+x1)/2;
+      t0.style.left=(mid-3)+'px'; t0.style.transform='translateX(-100%)';
+      t1.style.left=(mid+3)+'px'; t1.style.transform='translateX(0)';
+    }
+  })();
+  if(i1<=i0){ $('bt_tot').textContent='—'; $('bt_cagr').textContent='—';
+    $('bt_note').textContent='End month must be after start month.'; return; }
+  const eq=PX.eq, bo=PX.bond;
+  // annually-rebalanced (or drifting) blend, $1 start
+  let hEq=eqW, hBo=boW; const path=[1]; let curYear=+PX.dates[i0].slice(0,4);
+  for(let i=i0+1;i<=i1;i++){
+    hEq*= eq[i]/eq[i-1]; hBo*= bo[i]/bo[i-1];
+    const tot=hEq+hBo; path.push(tot);
+    const yr=+PX.dates[i].slice(0,4);
+    if(rebal==='annual' && yr!==curYear){ curYear=yr; hEq=eqW*tot; hBo=boW*tot; }
+  }
+  const g=path[path.length-1];
+  const months=i1-i0, yrs=months/12;
+  const cagr=Math.pow(g,1/yrs)-1;
+  // sleeve buy-and-hold returns (annualized)
+  const eqCagr=Math.pow(eq[i1]/eq[i0],1/yrs)-1, boCagr=Math.pow(bo[i1]/bo[i0],1/yrs)-1;
+  // max drawdown of the blend path
+  let pk=-Infinity, mdd=0;
+  path.forEach(v=>{ if(v>pk)pk=v; const dd=v/pk-1; if(dd<mdd)mdd=dd; });
+
+  $('bt_tot').textContent=(g-1>=0?'+':'')+((g-1)*100).toFixed(1)+'%';
+  $('bt_tot').className='big '+((g-1)>=0?'good':'bad');
+  $('bt_cagr').textContent=(cagr>=0?'+':'')+(cagr*100).toFixed(1)+'% / yr';
+  $('bt_note').textContent='$10,000 → '+money(10000*g)+' over '+yrs.toFixed(1)+' yrs.';
+  $('bt_mdd').textContent=(mdd*100).toFixed(1)+'%';
+  $('bt_mdd').className='big'+(mdd<-0.001?' bad':'');
+  const rebalLbl = rebal==='annual' ? 'annual rebalance' : 'buy & hold';
+  $('bt_sleeves').textContent='Equities alone '+(eqCagr>=0?'+':'')+(eqCagr*100).toFixed(1)+
+    '%/yr, bonds alone '+(boCagr>=0?'+':'')+(boCagr*100).toFixed(1)+'%/yr ('+rebalLbl+' blend shown).';
+  $('bt_range').textContent='Actual months used: '+PX.dates[i0]+' → '+PX.dates[i1]+
+    '.  Dataset covers '+PX.dates[0]+' to '+PX.dates[PX.dates.length-1]+'.';
+  // Fixed y-axis envelope: min/max of the 100% equity and 100% bond paths over
+  // this window (contains every blend), so the scale stays put as the slider moves.
+  let eLo=1, eHi=1;
+  for(let i=i0;i<=i1;i++){
+    const ev=eq[i]/eq[i0], bv=bo[i]/bo[i0];
+    eLo=Math.min(eLo,ev,bv); eHi=Math.max(eHi,ev,bv);
+  }
+  const pad=(eHi-eLo)*0.04 || 0.02;
+  drawBlend(path, i0, i1, eLo-pad, eHi+pad);
+}
+function drawBlend(path, i0, i1, lo, hi, hoverIdx){
+  const c=$('bt_chart'), dpr=window.devicePixelRatio||1, w=c.clientWidth, h=180;
+  c.width=w*dpr; c.height=h*dpr; const g=c.getContext('2d'); g.scale(dpr,dpr); g.clearRect(0,0,w,h);
+  const padL=54, padR=10, padT=10, padB=22;
+  const x0=padL, x1=w-padR, y0=padT, y1=h-padB;
+  const n=path.length;
+  const X=i=>x0+i/(n-1)*(x1-x0);
+  const Y=v=>y1-((v-lo)/((hi-lo)||1))*(y1-y0);
+  const k=v=>'$'+((v*10000)/1000).toFixed(1)+'k';   // $ value of a $10k start
+
+  g.font='10px -apple-system,Segoe UI,Roboto,sans-serif';
+  g.textBaseline='middle';
+  // Y axis grid + labels
+  g.strokeStyle='#22303f'; g.fillStyle='#93a4b8'; g.lineWidth=1;
+  for(let t=0;t<=4;t++){
+    const v=lo+(hi-lo)*t/4, yy=Y(v);
+    g.beginPath(); g.moveTo(x0,yy); g.lineTo(x1,yy); g.stroke();
+    g.textAlign='right'; g.fillText(k(v), x0-6, yy);
+  }
+  // baseline at $1 (start value) — dashed accent
+  g.strokeStyle='#3a4b5e'; g.setLineDash([3,3]); g.beginPath();
+  g.moveTo(x0,Y(1)); g.lineTo(x1,Y(1)); g.stroke(); g.setLineDash([]);
+  // axes lines
+  g.strokeStyle='#3a4b5e'; g.beginPath();
+  g.moveTo(x0,y0); g.lineTo(x0,y1); g.lineTo(x1,y1); g.stroke();
+  // X axis labels (start / mid / end)
+  g.fillStyle='#93a4b8'; g.textBaseline='top';
+  [[0,'left'],[0.5,'center'],[1,'right']].forEach(([t,al])=>{
+    const di=i0+Math.round((i1-i0)*t), xx=X((n-1)*t);
+    g.textAlign=al; g.fillText(PX.dates[di], al==='left'?x0:(al==='right'?x1:xx), y1+6);
+  });
+  // the growth path
+  g.beginPath();
+  path.forEach((v,i)=>{ const xx=X(i), yy=Y(v); i?g.lineTo(xx,yy):g.moveTo(xx,yy); });
+  g.strokeStyle='#38bdf8'; g.lineWidth=2; g.stroke();
+  g.lineTo(X(n-1),y1); g.lineTo(x0,y1); g.closePath();
+  g.fillStyle='rgba(56,189,248,.12)'; g.fill();
+  // store mapping for hover, and draw the hover marker if requested
+  btPlot={path, i0, i1, lo, hi, x0, x1, y0, y1, n};
+  if(hoverIdx!=null && hoverIdx>=0 && hoverIdx<n){
+    const hx=X(hoverIdx), hy=Y(path[hoverIdx]);
+    g.strokeStyle='rgba(147,164,184,.45)'; g.setLineDash([2,3]);
+    g.beginPath(); g.moveTo(hx,y0); g.lineTo(hx,y1); g.stroke(); g.setLineDash([]);
+    g.beginPath(); g.arc(hx,hy,4.5,0,2*Math.PI); g.fillStyle='#38bdf8'; g.fill();
+    g.lineWidth=2; g.strokeStyle='#0b1119'; g.stroke();
+  }
+}
+fetch('prices.json?v='+Date.now()).then(r=>r.json()).then(d=>{
+  PX=d;
+  // set up the start/end month sliders (values are indices into PX.dates)
+  const lastIdx=PX.dates.length-1, di=ym=>{ const k=PX.dates.indexOf(ym); return k<0?0:k; };
+  $('bt_start').max=lastIdx; $('bt_end').max=lastIdx;
+  $('bt_start').value=di('2000-01'); $('bt_end').value=lastIdx;   // end defaults to the latest (current) month
+  // dual-thumb behavior: thumbs push each other rather than crossing
+  $('bt_start').addEventListener('input',()=>{
+    if(+$('bt_start').value>=+$('bt_end').value) $('bt_end').value=Math.min(lastIdx,+$('bt_start').value+1);
+    blend(); });
+  $('bt_end').addEventListener('input',()=>{
+    if(+$('bt_end').value<=+$('bt_start').value) $('bt_start').value=Math.max(0,+$('bt_end').value-1);
+    blend(); });
+  ['bt_eq','bt_rebal'].forEach(id=>$(id).addEventListener('input',blend));
+  ['lg_bal','lg_wd','lg_yrs','lg_eq','lg_inf','lg_cola','lg_start'].forEach(id=>$(id).addEventListener('input',longevityHist));
+  blend(); longevityHist();
+  window.addEventListener('resize',()=>{ blend(); longevityHist(); nestegg(); });
+}).catch(()=>{ $('bt_note').textContent='Could not load prices.json (serve the page over http, not file://).'; });
+
+/* wire up */
+['ne_bal','ne_pmt','ne_yrs','ne_ret'].forEach(id=>$(id).addEventListener('input',nestegg));
+['sw_bal','sw_rate'].forEach(id=>$(id).addEventListener('input',safewd));
+
+/* market snapshot widget — refreshes from the live /api/market route on load */
+function populateMarket(m){
+  const up='#34d399', dn='#f87171';
+  $('mkt_asof').textContent='Close · '+m.asof;
+  $('mkt_spx').textContent=m.spx.level.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+  const sc=m.spx.chg_pct;
+  $('mkt_spx_c').textContent=(sc>=0?'▲ +':'▼ ')+sc.toFixed(2)+'%'; $('mkt_spx_c').style.color=sc>=0?up:dn;
+  const setY=(vid,cid,level,bps)=>{
+    $(vid).textContent=level.toFixed(2)+'%';
+    $(cid).textContent=(bps>=0?'▲ +':'▼ ')+bps+' bps'; $(cid).style.color=bps>=0?up:dn;
+  };
+  setY('mkt_10','mkt_10_c',m.y10.level,m.y10.chg_bps);
+  setY('mkt_30','mkt_30_c',m.y30.level,m.y30.chg_bps);
+}
+$('mkt_asof').textContent='loading…';
+fetch('/api/market').then(r=>{ if(!r.ok) throw 0; return r.json(); })
+  .then(populateMarket)
+  .catch(()=> fetch('market.json?v='+Date.now()).then(r=>r.json()).then(populateMarket)
+                .catch(()=>{ $('mkt_asof').textContent='market data unavailable'; }));
+
+/* Blend chart hover tooltip — dot snaps to the line, popup follows the cursor */
+(function(){
+  const btc=$('bt_chart'), tip=$('bt_tip');
+  btc.addEventListener('mousemove', e=>{
+    if(!btPlot) return;
+    const rect=btc.getBoundingClientRect(), cx=e.clientX-rect.left;
+    let f=(cx-btPlot.x0)/((btPlot.x1-btPlot.x0)||1); f=Math.max(0,Math.min(1,f));
+    const idx=Math.round(f*(btPlot.n-1));
+    drawBlend(btPlot.path, btPlot.i0, btPlot.i1, btPlot.lo, btPlot.hi, idx);
+    const val=btPlot.path[idx], ret=(val-1)*100, date=PX.dates[btPlot.i0+idx];
+    tip.innerHTML=date+' &nbsp; <b>'+(ret>=0?'+':'')+ret.toFixed(1)+'%</b><br>$10k → '+money(10000*val);
+    tip.style.display='block';
+    let lx=e.clientX+14; const tw=tip.offsetWidth;
+    if(lx+tw>window.innerWidth-8) lx=e.clientX-14-tw;   // flip near right edge
+    tip.style.left=lx+'px'; tip.style.top=(e.clientY+14)+'px';
+  });
+  btc.addEventListener('mouseleave', ()=>{
+    tip.style.display='none';
+    if(btPlot) drawBlend(btPlot.path, btPlot.i0, btPlot.i1, btPlot.lo, btPlot.hi);  // redraw without the dot
+  });
+})();
+
+/* Compound Interest growth chart hover tooltip */
+(function(){
+  const nec=$('ne_chart'), tip=$('bt_tip');
+  nec.addEventListener('mousemove', e=>{
+    if(!nePlot) return;
+    const rect=nec.getBoundingClientRect(), cx=e.clientX-rect.left;
+    let f=(cx-nePlot.x0)/((nePlot.x1-nePlot.x0)||1); f=Math.max(0,Math.min(1,f));
+    const idx=Math.round(f*(nePlot.n-1));
+    drawNestEgg(nePlot.total, null, nePlot.years, idx);
+    const yr=(idx/(nePlot.n-1))*nePlot.years;
+    tip.innerHTML='Year '+yr.toFixed(1)+' &nbsp; <b>'+money(Math.round(nePlot.total[idx]))+'</b>';
+    tip.style.display='block';
+    let lx=e.clientX+14; const tw=tip.offsetWidth;
+    if(lx+tw>window.innerWidth-8) lx=e.clientX-14-tw;
+    tip.style.left=lx+'px'; tip.style.top=(e.clientY+14)+'px';
+  });
+  nec.addEventListener('mouseleave', ()=>{
+    tip.style.display='none';
+    if(nePlot) drawNestEgg(nePlot.total, null, nePlot.years);
+  });
+})();
+
+/* chatbot */
+$('chat-fab').addEventListener('click',()=>{
+  const open=$('chat-panel').classList.toggle('open');
+  if(open) $('chat-input').focus();
+});
+$('chat-close').addEventListener('click',()=>$('chat-panel').classList.remove('open'));
+let chatHist=[];
+function chatBubble(role, text){
+  const b=document.createElement('div');
+  b.className='bubble '+(role==='user'?'user':'assistant');
+  b.textContent=text;
+  $('chat-body').appendChild(b);
+  $('chat-body').scrollTop=$('chat-body').scrollHeight;
+  return b;
+}
+// snapshot of the current calculator inputs + on-screen results, for the assistant's context
+function dashboardState(){
+  const t=id=>{const e=$(id); return e?e.textContent.trim():null;};
+  const v=id=>{const e=$(id); return e?e.value:null;};
+  const s={};
+  if(PX){
+    s.historic_blend_backtest={
+      start_month:PX.dates[+v('bt_start')], end_month:PX.dates[+v('bt_end')],
+      equity_pct:+v('bt_eq'), bond_pct:100-+v('bt_eq'), rebalancing:v('bt_rebal'),
+      total_return:t('bt_tot'), annualized_cagr:t('bt_cagr'), detail:t('bt_note'), sleeves:t('bt_sleeves')};
+    s.portfolio_longevity={
+      starting_balance:+v('lg_bal'), monthly_withdrawal:+v('lg_wd'), horizon_years:+v('lg_yrs'),
+      equity_pct:+v('lg_eq'), bond_pct:100-+v('lg_eq'), backtest_start:v('lg_start'),
+      withdrawal_cola: v('lg_cola')==='cpi'?'actual historical CPI':('fixed '+v('lg_inf')+'%/yr'),
+      probability_of_running_out:t('lg_out'), detail:t('lg_note'),
+      cohorts_tested:t('lg_n'), stats:t('lg_stats')};
+  }
+  s.compound_interest={
+    current_savings:+v('ne_bal'), monthly_contribution:+v('ne_pmt'), years:+v('ne_yrs'),
+    annual_return_pct:+v('ne_ret'), projected_balance:t('ne_out'), detail:t('ne_note')};
+  s.safe_withdrawal={
+    portfolio_value:+v('sw_bal'), withdrawal_rate_pct:+v('sw_rate'),
+    first_year_income:t('sw_out'), detail:t('sw_note')};
+  s.market_snapshot={sp500:t('mkt_spx'), sp500_change:t('mkt_spx_c'),
+    treasury_10yr:t('mkt_10'), treasury_30yr:t('mkt_30')};
+  return s;
+}
+async function chatSend(){
+  const inp=$('chat-input'), text=inp.value.trim();
+  if(!text) return;
+  inp.value=''; inp.disabled=true; $('chat-send').disabled=true;
+  chatBubble('user', text); chatHist.push({role:'user', content:text});
+  const pending=chatBubble('assistant','…');
+  try{
+    const r=await fetch('/api/chat',{method:'POST', headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({messages: chatHist, context: dashboardState()})});
+    const d=await r.json();
+    if(!r.ok) throw new Error(d.error || ('HTTP '+r.status));
+    pending.textContent=d.reply;
+    chatHist.push({role:'assistant', content:d.reply});
+    chatHist=chatHist.slice(-20);   // keep last 20 turns
+  }catch(e){
+    pending.textContent='⚠️ '+(e.message||'Could not reach the assistant.');
+    pending.classList.add('muted');
+  }finally{
+    inp.disabled=false; $('chat-send').disabled=false; inp.focus();
+  }
+}
+$('chat-send').addEventListener('click', chatSend);
+$('chat-input').addEventListener('keydown', e=>{ if(e.key==='Enter'){ e.preventDefault(); chatSend(); } });
+
+/* tabs — show one group of calculators at a time */
+function showTab(name){
+  document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('active', t.dataset.tab===name));
+  document.querySelectorAll('.card[data-panel]').forEach(c=>{ c.style.display = c.dataset.panel===name ? '' : 'none'; });
+  // charts can't measure width while hidden — redraw when their tab becomes visible
+  try{ if(name==='grow') nestegg(); if(name==='history') blend(); if(name==='spend') longevityHist(); }catch(e){}
+}
+document.querySelectorAll('.tab').forEach(t=>t.addEventListener('click',()=>showTab(t.dataset.tab)));
+showTab('grow');
+
+['ss_age','ss_income','ss_raise'].forEach(id=>$(id).addEventListener('input',socialsec));
+nestegg(); safewd(); socialsec();
+</script>
+</body>
+</html>
