@@ -207,7 +207,9 @@ class Handler(http.server.SimpleHTTPRequestHandler):
 if __name__ == "__main__":
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
     _load_dotenv()   # load ANTHROPIC_API_KEY (and any other vars) from .env if present
-    httpd = http.server.ThreadingHTTPServer(("127.0.0.1", 8777), Handler)
+    host = "0.0.0.0"                            # bind all interfaces (required by hosts like Render)
+    port = int(os.environ.get("PORT", 8777))   # Render provides $PORT; default 8777 for local dev
+    httpd = http.server.ThreadingHTTPServer((host, port), Handler)
     httpd.daemon_threads = True
-    print("serving dashboard on http://127.0.0.1:8777  (live /api/market, TTL %ds)" % TTL)
+    print("serving RetireDeck on http://%s:%d  (live /api/market, TTL %ds)" % (host, port, TTL))
     httpd.serve_forever()
