@@ -882,15 +882,23 @@ async function chatSend(){
 $('chat-send').addEventListener('click', chatSend);
 $('chat-input').addEventListener('keydown', e=>{ if(e.key==='Enter'){ e.preventDefault(); chatSend(); } });
 
-/* tabs — show one group of calculators at a time */
-function showTab(name){
+/* tabs — one group of calculators at a time, each with its own URL */
+const TAB2SLUG={grow:'', spend:'spend', benefits:'benefits', history:'backtest'};
+const SLUG2TAB={'':'grow', spend:'spend', benefits:'benefits', backtest:'history'};
+const TAB_TITLE={grow:'Free Retirement Planning Calculators', spend:'Portfolio Longevity & Safe Withdrawal',
+  benefits:'Social Security Estimator', history:'Historic Portfolio Backtest'};
+function showTab(name, push){
   document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('active', t.dataset.tab===name));
   document.querySelectorAll('.card[data-panel]').forEach(c=>{ c.style.display = c.dataset.panel===name ? '' : 'none'; });
   // charts can't measure width while hidden — redraw when their tab becomes visible
   try{ if(name==='grow') nestegg(); if(name==='history') blend(); if(name==='spend') longevityHist(); }catch(e){}
+  document.title='RetireDeck — '+(TAB_TITLE[name]||'Free Retirement Planning Calculators');
+  if(push) history.pushState({tab:name}, '', '/'+(TAB2SLUG[name]||''));
 }
-document.querySelectorAll('.tab').forEach(t=>t.addEventListener('click',()=>showTab(t.dataset.tab)));
-showTab('grow');
+const tabFromPath=()=>SLUG2TAB[location.pathname.replace(/^\/+|\/+$/g,'')] || 'grow';
+document.querySelectorAll('.tab').forEach(t=>t.addEventListener('click',()=>showTab(t.dataset.tab, true)));
+window.addEventListener('popstate', ()=>showTab(tabFromPath(), false));
+showTab(tabFromPath(), false);
 
 ['ss_age','ss_income','ss_raise'].forEach(id=>$(id).addEventListener('input',socialsec));
 nestegg(); safewd(); socialsec();

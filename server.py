@@ -178,6 +178,8 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(body)
             return
+        if self.path.split("?")[0] in ("/spend", "/benefits", "/backtest"):
+            self.path = "/index.html"   # client-side tab routes → serve the app
         return super().do_GET()
 
     def do_POST(self):
