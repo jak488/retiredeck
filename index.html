@@ -130,6 +130,7 @@
   .note{font-size:12.5px; color:var(--muted)}
   .result .note{font-size:12.5px; color:var(--muted); margin-top:6px}
   .good{color:var(--good)} .bad{color:var(--bad)} .accent{color:var(--accent)}
+  a.tab-jump{color:var(--accent); text-decoration:underline; cursor:pointer}
   canvas{width:100%; height:140px; margin-top:12px; display:block}
   .chart-tip{position:fixed; display:none; pointer-events:none; z-index:60;
     background:#0b1119; border:1px solid var(--line); border-radius:8px; padding:6px 9px;
@@ -342,6 +343,9 @@
       <div class="big accent" id="ne_out">—</div>
       <div class="note" id="ne_note"></div>
     </div>
+    <p class="note" style="margin-top:12px">This assumes the <strong>same return every year</strong> — real markets are far bumpier.
+      To see how a portfolio actually grew (and dropped) across a century of history, try the
+      <a href="/backtest" class="tab-jump" data-tab="history">Backtest</a> tab.</p>
   </section>
 
   <!-- Safe Withdrawal (Spend) -->
@@ -897,6 +901,9 @@ function showTab(name, push){
 }
 const tabFromPath=()=>SLUG2TAB[location.pathname.replace(/^\/+|\/+$/g,'')] || 'grow';
 document.querySelectorAll('.tab').forEach(t=>t.addEventListener('click',()=>showTab(t.dataset.tab, true)));
+document.querySelectorAll('.tab-jump').forEach(a=>a.addEventListener('click',e=>{
+  e.preventDefault(); showTab(a.dataset.tab, true); window.scrollTo({top:0, behavior:'smooth'});
+}));
 window.addEventListener('popstate', ()=>showTab(tabFromPath(), false));
 showTab(tabFromPath(), false);
 
